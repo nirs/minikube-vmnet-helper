@@ -29,10 +29,10 @@ jobs:
           set -euo pipefail
           git remote add upstream https://github.com/nirs/vmnet-helper.git
           git fetch upstream --tags
-          upstream_tags=$(git ls-remote --tags upstream | \
-            awk '{print $2}' | sed 's|refs/tags/||' | grep -v '\^{}' | sort -V)
-          origin_tags=$(git ls-remote --tags origin 2>/dev/null | \
-            awk '{print $2}' | sed 's|refs/tags/||' | grep -v '\^{}' | sort -V)
+          upstream_tags=$(git ls-remote --refs --tags upstream | \
+            awk '{print $2}' | sed 's|refs/tags/||' | sort -V)
+          origin_tags=$(git ls-remote --refs --tags origin 2>/dev/null | \
+            awk '{print $2}' | sed 's|refs/tags/||' | sort -V)
           missing_tags=""
           for tag in $upstream_tags; do
             if ! echo "$origin_tags" | grep -q "^$tag$"; then
@@ -46,7 +46,8 @@ jobs:
               fi
             fi
           done
-          tags_json=$(printf '%s\n' $missing_tags | jq -R . | jq -s 'map(select(. != ""))')
+          tags_json=$(printf '%s\n' $missing_tags | \
+            python -c 'import sys,json; print(json.dumps([t for t in sys.stdin.read().split() if t]))')
           echo "tags=$tags_json" >> $GITHUB_OUTPUT
           latest_tag=$(printf '%s\n' $upstream_tags | tail -n1)
           echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
