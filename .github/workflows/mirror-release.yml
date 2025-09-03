@@ -61,7 +61,7 @@ jobs:
           echo "Fetching local release tags (${GITHUB_REPOSITORY})..."
           local_tags=$(gh api repos/${GITHUB_REPOSITORY}/releases --paginate -q '.[].tag_name' | sort -V || true)
           echo "Local tags:"
-            echo "${local_tags}"
+          echo "${local_tags}"
 
           missing=()
           if [ -n "${upstream_tags}" ]; then
@@ -72,6 +72,7 @@ jobs:
             done <<< "${upstream_tags}"
           fi
 
+            # No new tags
           if [ ${#missing[@]} -eq 0 ]; then
             echo "No new upstream tags."
             echo 'tags=[]' >> "$GITHUB_OUTPUT"
@@ -135,7 +136,8 @@ jobs:
               continue
             fi
 
-            body=$(cat <<EOF
+            # Write body to a file (safer than inline heredoc inside command substitution)
+            cat > body.txt <<EOF
 Mirrored upstream release ${tag}
 
 Upstream repository: nirs/vmnet-helper
@@ -145,9 +147,8 @@ Upstream commit: ${upstream_commit}
 Artifacts in this release are rebuilt from upstream source (see workflow logs for reproducibility details).
 NOTE: The tag in this repo points to a local commit (not the upstream commit); upstream commit recorded above.
 EOF
-)
 
-            gh release create "${tag}" -t "${tag}" -n "${body}"
+            gh release create "${tag}" -t "${tag}" -F body.txt
             echo "Created release ${tag}"
             echo "::endgroup::"
           done
