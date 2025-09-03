@@ -1,0 +1,257 @@
+# Mirror and rebuild upstream vmnet-helper releases (nirs/vmnet-helper)
+#
+# This workflow:
+#   1. Runs daily (and on manual dispatch)
+#   2. Discovers upstream release tags (v*) not yet present as releases here
+#   3. Creates corresponding releases in THIS repo (with upstream commit noted)
+#   4. Builds & reproducibly verifies upstream source for each missing tag
+#   5. Uploads tar.gz artifacts per macOS platform (13 & 15) to the matching release
+#
+# Safety / Trust:
+#   We build from audited upstream source rather than trusting their prebuilt artifacts.
+#
+# Limitations:
+#   The tag created in this repo points to our current HEAD (not upstream commit).
+#   The upstream commit SHA is stored in the release body for traceability.
+#
+# Manual Inputs:
+#   max_new: (optional) cap how many NEW upstream tags to process this run (oldest first).
+#
+# To trigger manually:
+#   Go to Actions -> Mirror Upstream Releases -> Run workflow.
+
+name: Mirror Upstream Releases
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # Daily at 03:17 UTC (arbitrary minute to spread load)
+  workflow_dispatch:
+    inputs:
+      max_new:
+        description: "Maximum number of NEW upstream tags to process this run (leave blank for all)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mirror-upstream-releases
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Discover missing upstream tags
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.set-tags.outputs.tags }}
+    steps:
+      - name: Fetch upstream & local release tag lists
+        id: fetch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAX_NEW: ${{ inputs.max_new }}
+        run: |
+          set -euo pipefail
+
+          echo "Fetching upstream release tags (nirs/vmnet-helper)..."
+          # Get all upstream release tags (filter to those starting with v)
+          upstream_tags=$(gh api repos/nirs/vmnet-helper/releases --paginate -q '.[].tag_name' | grep '^v' | sort -V || true)
+          echo "Upstream tags:"
+          echo "${upstream_tags}"
+
+            # Get our existing release tags
+          echo "Fetching local release tags (${GITHUB_REPOSITORY})..."
+          local_tags=$(gh api repos/${GITHUB_REPOSITORY}/releases --paginate -q '.[].tag_name' | sort -V || true)
+          echo "Local tags:"
+          echo "${local_tags}"
+
+          # Determine missing tags
+          missing_tags=()
+          if [ -n "${upstream_tags}" ]; then
+            while IFS= read -r tag; do
+              if ! grep -Fxq "$tag" <<< "${local_tags}"; then
+                missing_tags+=("$tag")
+              fi
+            done <<< "${upstream_tags}"
+          fi
+
+          if [ ${#missing_tags[@]} -eq 0 ]; then
+            echo "No new upstream tags to mirror."
+          else
+            echo "Missing tags before limit: ${missing_tags[*]}"
+          fi
+
+          # Apply max_new limit if provided
+          if [ -n "${MAX_NEW:-}" ] && [ "${MAX_NEW}" != "0" ]; then
+            echo "Limiting to first ${MAX_NEW} missing tags (sorted oldest->newest)."
+            limited=()
+            count=0
+            for t in "${missing_tags[@]}"; do
+              limited+=("$t")
+              count=$((count+1))
+              [ "$count" -ge "${MAX_NEW}" ] && break
+            done
+            missing_tags=("${limited[@]}")
+          fi
+
+          # Convert to JSON array
+          json=$(printf '%s\n' "${missing_tags[@]}" | jq -R . | jq -s .)
+          echo "Missing tags JSON: $json"
+
+          echo "tags=$json" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "Discovered tags output: ${{ steps.fetch.outputs.tags }} (see job outputs)"
+
+      - name: Set tags output
+        id: set-tags
+        run: |
+          # Already set in previous step; this keeps a clean interface if we refactor later.
+          echo "tags=${{ steps.fetch.outputs.tags }}" >> "$GITHUB_OUTPUT"
+        env:
+          # Propagate value from earlier step
+          STEPS_FETCH_TAGS: ${{ steps.fetch.outputs.tags }}
+
+  create-releases:
+    name: Create placeholder releases
+    needs: discover
+    if: needs.discover.outputs.tags != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create releases for each missing tag
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            TAGS_JSON: ${{ needs.discover.outputs.tags }}
+        run: |
+          set -euo pipefail
+          tags=$(echo "${TAGS_JSON}" | jq -r '.[]')
+          if [ -z "${tags}" ]; then
+            echo "No tags to create releases for."
+            exit 0
+          fi
+
+          for tag in $tags; do
+            echo "::group::Processing $tag"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "Release $tag already exists (race or manual)."
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Obtain upstream commit for this tag
+            upstream_commit=$(git ls-remote --tags https://github.com/nirs/vmnet-helper.git "refs/tags/${tag}" | awk '{print $1}')
+            if [ -z "${upstream_commit}" ]; then
+              echo "WARNING: Could not find upstream commit for $tag (skipping release creation)."
+              echo "::endgroup::"
+              continue
+            fi
+
+            body=$(cat <<EOF
+Mirrored upstream release ${tag}
+
+Upstream repository: nirs/vmnet-helper
+Upstream tag: ${tag}
+Upstream commit: ${upstream_commit}
+
+Artifacts in this release are rebuilt from upstream source (see workflow logs for reproducibility details).
+NOTE: Tag in this repo points to an internal commit (not upstream), upstream commit recorded above.
+EOF
+)
+
+            # Create the release (this will also create the tag locally if missing)
+            gh release create "${tag}" \
+              -t "${tag}" \
+              -n "${body}"
+            echo "Created release ${tag}"
+            echo "::endgroup::"
+          done
+
+  build:
+    name: Build & upload artifacts (tag=${{ matrix.tag }}, platform=${{ matrix.platform }})
+    needs: [discover, create-releases]
+    if: needs.discover.outputs.tags != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: ${{ fromJson(needs.discover.outputs.tags) }}
+        platform:
+          - macos-13
+          - macos-15
+    runs-on: ${{ matrix.platform }}
+    env:
+      TAG_NAME: ${{ matrix.tag }}
+    steps:
+      - name: Verify upstream tag still exists
+        run: |
+          set -euo pipefail
+          echo "Verifying upstream tag ${TAG_NAME} still exists..."
+          if ! git ls-remote --tags https://github.com/nirs/vmnet-helper.git "refs/tags/${TAG_NAME}" | grep -q "${TAG_NAME}$"; then
+            echo "Tag ${TAG_NAME} missing upstream now (possible force-delete). Exiting."
+            exit 1
+          fi
+          echo "Upstream tag OK."
+
+      - name: Checkout upstream source
+        uses: actions/checkout@v4
+        with:
+          repository: nirs/vmnet-helper
+          ref: ${{ env.TAG_NAME }}
+          fetch-depth: 0
+
+      - name: Record upstream commit
+        id: upstream
+        run: |
+          set -euo pipefail
+          commit=$(git rev-parse HEAD)
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "Upstream commit: $commit"
+
+      - name: Install build requirements
+        run: |
+          brew update
+          brew install meson diffoscope || true
+          which meson
+          which diffoscope
+
+      - name: Build (first pass)
+        run: |
+          set -euxo pipefail
+          meson setup build
+          meson compile -C build
+          ./archive.sh build
+          ls -l build/*.tar.gz
+
+      - name: Reproducibility check (second pass)
+        run: |
+          set -euxo pipefail
+          meson setup repro
+          meson compile -C repro
+          ./archive.sh repro
+          ls -l repro/*.tar.gz
+          echo "Running diffoscope..."
+          diffoscope build/vmnet-helper-*.tar.gz repro/vmnet-helper-*.tar.gz
+
+      - name: Upload artifact to mirrored release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Uploading build artifact(s) for ${TAG_NAME}..."
+          gh release upload "${TAG_NAME}" build/vmnet-helper-*.tar.gz --clobber
+
+      - name: Summarize
+        run: |
+          echo "Mirrored upstream tag: ${TAG_NAME}"
+          echo "Platform: ${{ matrix.platform }}"
+          echo "Upstream commit: ${{ steps.upstream.outputs.commit }}"
+          echo "Artifacts uploaded to release ${TAG_NAME}"
+
+  no-op:
+    name: No new releases
+    needs: discover
+    if: needs.discover.outputs.tags == '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No new upstream releases to mirror today."
