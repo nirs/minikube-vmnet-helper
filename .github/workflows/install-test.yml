@@ -37,6 +37,8 @@ jobs:
           VERSION_STRING=$(/opt/vmnet-helper/bin/vmnet-helper --version | grep -oE 'v[0-9]+\.[0-9]+(\.[0-9]+)?')
           echo "version=$VERSION_STRING" >> $GITHUB_OUTPUT
       - name: 🏷️ Verify Matching Latest Versions
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           INSTALLED_VERSION="${{ steps.get_version.outputs.version }}"
           echo "Installed version is: $INSTALLED_VERSION"
