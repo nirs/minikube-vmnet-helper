@@ -5,6 +5,6 @@ For issues/credits/requests checkout upstream source: https://github.com/nirs/vm
 
 ### Download, install
 ```sh
-curl -fsSL https://github.com/nirs/vmnet-helper/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | bash
 ```
 
