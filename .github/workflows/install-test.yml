@@ -26,10 +26,27 @@ jobs:
 
     steps:
       - name: 📥 Download and Install vmnet-helper
-        continue-on-error: true
         run: |
           set -x
           curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | sudo bash
           echo $?
       - name: ✅ Verify vmnet-helper Version
         run: /opt/vmnet-helper/bin/vmnet-helper --version
+      - name: 🏷️ Verify Matching Latest Versions
+        run: |
+          # Fetch the latest release tag from the GitHub API
+          LATEST_TAG=$(curl -s https://api.github.com/repos/minikube-machine/vmnet-helper/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+          # Get the version from the script's output (e.g., "vmnet-helper version vX.Y.Z")
+          INSTALLED_VERSION=$(/opt/vmnet-helper/bin/vmnet-helper --version | awk '{print $3}')
+
+          echo "Latest GitHub Tag: $LATEST_TAG"
+          echo "Installed Version:  $INSTALLED_VERSION"
+
+          # Compare the versions and fail the workflow if they don't match
+          if [ "$LATEST_TAG" != "$INSTALLED_VERSION" ]; then
+            echo "::error::Version mismatch! Latest GitHub tag is $LATEST_TAG, but the installed version is $INSTALLED_VERSION."
+            exit 1
+          fi
+
+          echo "✅ Version check passed."
