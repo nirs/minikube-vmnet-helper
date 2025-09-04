@@ -118,5 +118,5 @@ jobs:
 
           # Upload install.sh once (avoid duplicate uploads across matrix)
           if [[ "${{ matrix.platform }}" == "macos-15" ]]; then
-            gh release upload --repo "$repo" "$tag" ../install.sh --clobber
+            gh release upload --repo "$repo" "$tag" ./install.sh --clobber
           fi
