@@ -67,6 +67,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Checkout upstream source
         run: git clone --depth 1 --branch "${{ matrix.tag }}" https://github.com/nirs/vmnet-helper upstream
       - name: Install requirements
@@ -96,7 +98,7 @@ jobs:
           if ! gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
             gh release create "$tag" --repo "$repo" -t "$tag" -n "Mirror of upstream release $tag"
           fi
-          gh release upload --repo "$repo" "$tag" "$tarball" --clobber
+          gh release upload --repo "$repo" "$tag" "$tarball" ../install.sh --clobber
       - name: Upload latest artifact
         if: matrix.platform == 'macos-15' && matrix.tag == needs.discover.outputs.latest_tag
         uses: actions/upload-artifact@v4
