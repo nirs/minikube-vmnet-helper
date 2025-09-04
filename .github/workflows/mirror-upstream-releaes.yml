@@ -90,7 +90,6 @@ jobs:
       - name: Upload artifact to release
         env:
           GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
-        working-directory: upstream
         run: |
           set -euo pipefail
 
@@ -99,7 +98,7 @@ jobs:
 
           # Find the tarball produced by ./archive.sh build
           shopt -s nullglob
-          files=(build/vmnet-helper-*.tar.gz)
+          files=(upstream/build/vmnet-helper-*.tar.gz)
           if (( ${#files[@]} == 0 )); then
             echo "No tarball found in ./build. Contents are:" >&2
             ls -lah build || true
