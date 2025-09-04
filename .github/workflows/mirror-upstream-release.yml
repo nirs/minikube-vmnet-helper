@@ -19,6 +19,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.MIRROR_TOKEN }}
+      - name: Configure git
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
       - name: Determine tags to mirror
         id: tags
         env:
@@ -84,8 +88,14 @@ jobs:
           GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         working-directory: upstream
         run: |
+          set -euo pipefail
+          repo="minikube-machine/vmnet-helper"
+          tag="${{ matrix.tag }}"
           tarball=$(ls build/vmnet-helper-*.tar.gz)
-          gh release upload --repo minikube-machine/vmnet-helper "${{ matrix.tag }}" "$tarball" --clobber
+          if ! gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$repo" -t "$tag" -n "Mirror of upstream release $tag"
+          fi
+          gh release upload --repo "$repo" "$tag" "$tarball" --clobber
       - name: Upload latest artifact
         if: matrix.platform == 'macos-13' && matrix.tag == needs.discover.outputs.latest_tag
         uses: actions/upload-artifact@v4
@@ -128,4 +138,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         run: |
-          gh release create latest latest-tarball/vmnet-helper-*.tar.gz -t latest -n "Latest release"
+          repo="minikube-machine/vmnet-helper"
+          gh release create latest --repo "$repo latest-tarball/vmnet-helper-*.tar.gz -t latest -n "Latest release"
