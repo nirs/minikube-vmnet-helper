@@ -1,11 +1,8 @@
----
 name: mirror-upstream-tags
-
 on:
   schedule:
     - cron: '0 10 * * *'
   workflow_dispatch:
-
 jobs:
   discover:
     runs-on: ubuntu-latest
@@ -96,10 +93,31 @@ jobs:
         working-directory: upstream
         run: |
           set -euo pipefail
+
           repo="minikube-machine/vmnet-helper"
           tag="${{ matrix.tag }}"
-          tarball=$(./upstream/build/vmnet-helper-*.tar.gz)
-          if ! gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
-            gh release create "$tag" --repo "$repo" -t "$tag" -n "Mirror of upstream release github.com/nirs/vmnet-helper $tag "
+
+          # Find the tarball produced by ./archive.sh build
+          shopt -s nullglob
+          files=(build/vmnet-helper-*.tar.gz)
+          if (( ${#files[@]} == 0 )); then
+            echo "No tarball found in ./build. Contents are:" >&2
+            ls -lah build || true
+            exit 1
           fi
-          gh release upload --repo "$repo" "$tag" "$tarball" ./install.sh --clobber
+          tarball="${files[0]}"
+
+          # Ensure the release exists
+          if ! gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$repo" \
+              -t "$tag" \
+              -n "Mirror of upstream release github.com/nirs/vmnet-helper $tag"
+          fi
+
+          # Upload platform-specific tarball
+          gh release upload --repo "$repo" "$tag" "$tarball" --clobber
+
+          # Upload install.sh once (avoid duplicate uploads across matrix)
+          if [[ "${{ matrix.platform }}" == "macos-15" ]]; then
+            gh release upload --repo "$repo" "$tag" ../install.sh --clobber
+          fi
