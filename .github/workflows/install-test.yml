@@ -30,22 +30,25 @@ jobs:
           set -x
           curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | sudo bash
           echo $?
-      - name: ✅ Verify vmnet-helper Version
-        run: /opt/vmnet-helper/bin/vmnet-helper --version
+      - name: ✅ Check vmnet-helper version
+        id: get_version
+        run: |
+          /opt/vmnet-helper/bin/vmnet-helper --version
+          VERSION_STRING=$(/opt/vmnet-helper/bin/vmnet-helper --version | grep -oE 'v[0-9]+\.[0-9]+(\.[0-9]+)?')
+          echo "version=$VERSION_STRING" >> $GITHUB_OUTPUT
       - name: 🏷️ Verify Matching Latest Versions
         run: |
+          INSTALLED_VERSION="${{ steps.get_version.outputs.version }}"
+          echo "Installed version is: $INSTALLED_VERSION"
+
           # Fetch the latest release tag from the GitHub API
           LATEST_TAG=$(curl -s https://api.github.com/repos/minikube-machine/vmnet-helper/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "Latest release tag is: $LATEST_TAG"
 
-          # Get the version from the script's output (e.g., "vmnet-helper version vX.Y.Z")
-          INSTALLED_VERSION=$(/opt/vmnet-helper/bin/vmnet-helper --version | awk '{print $3}')
-
-          echo "Latest GitHub Tag: $LATEST_TAG"
-          echo "Installed Version:  $INSTALLED_VERSION"
-
-          # Compare the versions and fail the workflow if they don't match
-          if [ "$LATEST_TAG" != "$INSTALLED_VERSION" ]; then
-            echo "::error::Version mismatch! Latest GitHub tag is $LATEST_TAG, but the installed version is $INSTALLED_VERSION."
+          if [[ "$INSTALLED_VERSION" == "$LATEST_TAG" ]]; then
+            echo "✅ Success: Installed version matches the latest release tag."
+          else
+            echo "❌ Error: Version mismatch! Expected '$LATEST_TAG' but found '$INSTALLED_VERSION'."
             exit 1
           fi
 
