@@ -27,7 +27,8 @@ jobs:
     steps:
       - name: 📥 Download and Install vmnet-helper
         run: |
+          set -x
           curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | sudo bash
-          
+          echo $?
       - name: ✅ Verify vmnet-helper Version
         run: /opt/vmnet-helper/bin/vmnet-helper --version
