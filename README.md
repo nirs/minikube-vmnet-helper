@@ -1,9 +1,16 @@
-# vmnet-helper
+# vmnet-helper (Automated Mirror Builds)
 
-auto releaser for building and hosting built from https://github.com/nirs/vmnet-helper
+This repository provides automated, reproducible builds of the upstream project:  
+Upstream source: https://github.com/nirs/vmnet-helper
 
 
-# download and install 
+License:
+Inherits the license of the upstream project.
+
+Feedback:
+Any issues should be created in upstream project https://github.com/nirs/vmnet-helper/issues this project only mirros the binaries.
+
+# Download & Install
 
 ```
 machine="$(uname -m)"
@@ -12,3 +19,4 @@ curl -LOf "https://github.com/minikube-machine/vmnet-helper/releases/latest/down
 sudo tar xvf "$archive" -C / opt/vmnet-helper
 rm "$archive"
 ```
+
