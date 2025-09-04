@@ -96,7 +96,7 @@ jobs:
           tag="${{ matrix.tag }}"
           tarball=$(ls build/vmnet-helper-*.tar.gz)
           if ! gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
-            gh release create "$tag" --repo "$repo" -t "$tag" -n "Mirror of upstream release $tag"
+            gh release create "$tag" --repo "$repo" -t "$tag" -n "Mirror of upstream release github.com/nirs/vmnet-helper $tag "
           fi
           gh release upload --repo "$repo" "$tag" "$tarball" ../install.sh --clobber
       - name: Upload latest artifact
