@@ -3,7 +3,7 @@ name: mirror-upstream-release
 
 'on':
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 10 * * *' 
   workflow_dispatch:
 
 jobs:
@@ -85,7 +85,7 @@ jobs:
         working-directory: upstream
         run: |
           tarball=$(ls build/vmnet-helper-*.tar.gz)
-          gh release upload "${{ matrix.tag }}" "$tarball" --clobber
+          gh release upload --repo minikube-machine/vmnet-helper "${{ matrix.tag }}" "$tarball" --clobber
       - name: Upload latest artifact
         if: matrix.platform == 'macos-13' && matrix.tag == needs.discover.outputs.latest_tag
         uses: actions/upload-artifact@v4
