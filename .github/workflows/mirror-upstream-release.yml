@@ -52,6 +52,7 @@ jobs:
             python -c 'import sys,json; print(json.dumps([t for t in sys.stdin.read().split() if t]))')
           echo "tags=$tags_json" >> $GITHUB_OUTPUT
           latest_tag=$(printf '%s\n' $upstream_tags | tail -n1)
+          echo "latest tag is $latest_tag"
           echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
 
   build:
