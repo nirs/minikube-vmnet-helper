@@ -41,9 +41,16 @@ jobs:
           INSTALLED_VERSION="${{ steps.get_version.outputs.version }}"
           echo "Installed version is: $INSTALLED_VERSION"
 
-          # Fetch the latest release tag from the GitHub API
-          LATEST_TAG=$(curl -s https://api.github.com/repos/minikube-machine/vmnet-helper/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          # Use the authenticated 'gh' CLI to reliably fetch the tag
+          echo "Fetching latest release tag..."
+          LATEST_TAG=$(gh release view --repo minikube-machine/vmnet-helper --json tagName --jq .tagName)
           echo "Latest release tag is: $LATEST_TAG"
+
+          # Add a check to ensure the tag was actually fetched
+          if [[ -z "$LATEST_TAG" ]]; then
+            echo "::error::Failed to fetch the latest tag. The API call might have failed."
+            exit 1
+          fi
 
           if [[ "$INSTALLED_VERSION" == "$LATEST_TAG" ]]; then
             echo "✅ Success: Installed version matches the latest release tag."
@@ -51,5 +58,3 @@ jobs:
             echo "❌ Error: Version mismatch! Expected '$LATEST_TAG' but found '$INSTALLED_VERSION'."
             exit 1
           fi
-
-          echo "✅ Version check passed."
