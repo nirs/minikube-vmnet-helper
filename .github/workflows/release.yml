@@ -48,19 +48,19 @@ jobs:
       - name: Upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: upstream
         run: |
-          gh release upload ${GITHUB_REF_NAME} build/vmnet-helper-*.tar.gz
+          gh release upload "${GITHUB_REF_NAME}" build/vmnet-helper-*.tar.gz --clobber
       - name: Upload artifact to release
         env:
           GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         working-directory: upstream
         run: |
           set -euo pipefail
-          cd upstream
           repo="minikube-machine/vmnet-helper"
           tag="${{ github.ref_name }}"
-          tarball=$(ls build/vmnet-helper-*.tar.gz)
+          tarball=$(./upstream/build/vmnet-helper-*.tar.gz)
           if ! gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
             gh release create "$tag" --repo "$repo" -t "$tag" -n "Mirror of upstream release github.com/nirs/vmnet-helper $tag "
           fi
-          gh release upload --repo "$repo" "$tag" "$tarball" ../install.sh --clobber
+          gh release upload --repo "$repo" "$tag" "$tarball" ./install.sh --clobber
