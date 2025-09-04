@@ -3,7 +3,7 @@ name: mirror-upstream-release
 
 'on':
   schedule:
-    - cron: '0 10 * * *' 
+    - cron: '0 10 * * *'
   workflow_dispatch:
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         tag: ${{ fromJson(needs.discover.outputs.tags) }}
-        platform: [macos-13, macos-15]
+        platform: [macos-15]
     runs-on: ${{ matrix.platform }}
     permissions:
       contents: write
@@ -138,5 +138,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         run: |
+          set -euo pipefail
           repo="minikube-machine/vmnet-helper"
-          gh release create latest --repo "$repo latest-tarball/vmnet-helper-*.tar.gz -t latest -n "Latest release"
+          tarball=$(ls latest-tarball/vmnet-helper-*.tar.gz)
+          gh release create latest "$tarball" --repo "$repo" -t latest -n "Latest release"
