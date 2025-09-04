@@ -8,7 +8,7 @@ archive="vmnet-helper-$machine.tar.gz"
 curl -fsSLo "$archive" "https://github.com/nirs/vmnet-helper/releases/latest/download/$archive"
 
 # Extract the archive into / (it contains ./opt/vmnet-helper/...)
-sudo tar -xvf "$archive" -C /
+sudo tar -xvvmf "$archive" -C / opt/vmnet-helper
 rm -f "$archive"
 
 install_sudoers() {
