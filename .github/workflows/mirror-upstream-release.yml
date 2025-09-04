@@ -143,3 +143,5 @@ jobs:
           repo="minikube-machine/vmnet-helper"
           tarball=$(ls latest-tarball/vmnet-helper-*.tar.gz)
           gh release create latest "$tarball" --repo "$repo" -t latest -n "Latest release"
+          tarball=$(find latest-tarball -name 'vmnet-helper-*.tar.gz' -print -quit)
+          gh release create latest "$tarball" --repo "$repo" -t latest -n "Latest release"
