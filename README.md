@@ -1,4 +1,4 @@
-# vmnet-helper (Automated Mirror Builds)
+# vmnet-helper (automated mirror)
 [![Test Installer Script](https://github.com/minikube-machine/vmnet-helper/actions/workflows/install-test.yml/badge.svg)](https://github.com/minikube-machine/vmnet-helper/actions/workflows/install-test.yml)
 [![Minikube Integration Test](https://github.com/minikube-machine/vmnet-helper/actions/workflows/minikube-integration.yaml/badge.svg)](https://github.com/minikube-machine/vmnet-helper/actions/workflows/minikube-integration.yaml)
 
