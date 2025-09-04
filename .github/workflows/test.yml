@@ -26,6 +26,7 @@ jobs:
 
     steps:
       - name: 📥 Download and Install vmnet-helper
+        continue-on-error: true
         run: |
           set -x
           curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | sudo bash
