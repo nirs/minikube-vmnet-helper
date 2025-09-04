@@ -105,8 +105,7 @@ jobs:
           path: upstream/build/vmnet-helper-*.tar.gz
 
   latest:
-    needs: [discover, build]
-    if: needs.discover.outputs.tags != '[]'
+    needs: discover
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -114,34 +113,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           token: ${{ secrets.MIRROR_TOKEN }}
       - name: Configure git
         run: |
           git config user.name github-actions[bot]
           git config user.email github-actions[bot]@users.noreply.github.com
-      - name: Update latest tag
-        env:
-          GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
-          LATEST_TAG: ${{ needs.discover.outputs.latest_tag }}
+      - name: Determine highest version tag
+        id: highest
         run: |
           set -euo pipefail
-          git fetch origin --tags
-          git fetch origin "refs/tags/$LATEST_TAG:refs/tags/$LATEST_TAG"
-          git tag -f latest "$LATEST_TAG"
-          git push origin :refs/tags/latest
+          git fetch --tags origin
+          tags=$(git tag --list | grep -E '^[0-9]+(\.[0-9]+)*$' || true)
+          if [ -z "$tags" ]; then
+            echo "No version-like tags found"
+            echo "highest=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          highest=$(printf '%s\n' $tags | sort -V | tail -n1)
+          echo "Highest tag: $highest"
+          echo "highest=$highest" >> "$GITHUB_OUTPUT"
+      - name: Update latest tag and release
+        if: steps.highest.outputs.highest != ''
+        env:
+            GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+            HIGHEST: ${{ steps.highest.outputs.highest }}
+        run: |
+          set -euo pipefail
+          git fetch --tags origin
+          # Point / update local latest tag at highest version
+            git tag -f latest "$HIGHEST"
+          # Replace remote latest tag
+          git push origin :refs/tags/latest || true
           git push origin refs/tags/latest
-          gh release delete latest -y || true
-      - name: Download latest artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: latest-tarball
-      - name: Create latest release
-        env:
-          GH_TOKEN: ${{ secrets.MIRROR_TOKEN }}
-        run: |
-          set -euo pipefail
-          repo="minikube-machine/vmnet-helper"
-          tarball=$(ls latest-tarball/vmnet-helper-*.tar.gz)
-          gh release create latest "$tarball" --repo "$repo" -t latest -n "Latest release"
-          tarball=$(find latest-tarball -name 'vmnet-helper-*.tar.gz' -print -quit)
-          gh release create latest "$tarball" --repo "$repo" -t latest -n "Latest release"
+          # Recreate latest release pointing to the highest version commit
+          if gh release view latest >/dev/null 2>&1; then
+            gh release delete latest -y
+          fi
+          gh release create latest --target "$HIGHEST" -t latest -n "Alias for highest version tag: $HIGHEST"
