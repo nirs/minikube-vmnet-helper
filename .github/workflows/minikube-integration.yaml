@@ -64,8 +64,11 @@ jobs:
         with:
           driver: vfkit
           start-args: --network vmnet-shared
-
-      - name: Inspect minikube
+      - name: Check Proc is up
+        run: pgrep vmnet-helper
+      - name: Verify minikube logs 
+        run: cat ~/.minikube/logs/lastStart.txt | grep "Started vmnet-helper"
+      - name: Inspect minikube logs
         shell: bash
         run: |
           tree -h ~/.minikube
