@@ -63,12 +63,18 @@ jobs:
         uses: medyagh/setup-minikube@HEAD
         with:
           driver: vfkit
-          start-args: --network vmnet-shared
+          start-args: --network vmnet-shared --wait-timeout=20m
+
       - name: Check Proc is up
+        if: always()
         run: pgrep vmnet-helper
-      - name: Verify minikube logs 
-        run: cat ~/.minikube/logs/lastStart.txt | grep "Started vmnet-helper"
+
+      - name: Verify minikube logs
+        if: always()
+        run: cat ~/.minikube/logs/lastStart.txt | grep "Started vmnet-helper" || true
+
       - name: Inspect minikube logs
+        if: always()
         shell: bash
         run: |
           tree -h ~/.minikube
