@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""
+Print missing tags in local repo.
+"""
+
+import json
+import subprocess
+import sys
+
+UPSTREAM_REPO = "nirs/vmnet-helper"
+
+# Useful when running in a contributor fork.
+if len(sys.argv) > 1:
+    LOCAL_REPO = sys.argv[1]
+else:
+    LOCAL_REPO = "minikube-machine/vmnet-helper"
+
+# These tags used different release artifacts and install process and we cannot
+# mirror them.
+SKIP_TAGS = frozenset(
+    [
+        "v0.6.0",
+        "v0.5.0",
+        "v0.4.0",
+        "v0.3.0",
+        "v0.2.0",
+        "v0.1.0",
+    ]
+)
+
+
+def list_release_tags(repo):
+    cmd = [
+        "gh",
+        "release",
+        "list",
+        "--repo",
+        repo,
+        "--exclude-pre-releases",
+        "--json",
+        "tagName",
+        "--jq",
+        ".[].tagName",
+    ]
+    return subprocess.check_output(cmd).decode().strip().splitlines()
+
+
+upstream_tags = set(list_release_tags(UPSTREAM_REPO))
+local_tags = set(list_release_tags(LOCAL_REPO))
+
+# Missing tags that should be mirrored in local repo.
+missing_tags = sorted(upstream_tags - (local_tags | SKIP_TAGS))
+
+print(json.dumps(missing_tags))
