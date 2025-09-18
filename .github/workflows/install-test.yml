@@ -25,6 +25,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Intall yq
+        run: |
+          brew update 
+          brew install yq
       - name: 📥 Download and Install vmnet-helper
         run: |
           set -x
@@ -34,7 +38,7 @@ jobs:
         id: get_version
         run: |
           /opt/vmnet-helper/bin/vmnet-helper --version
-          VERSION_STRING=$(/opt/vmnet-helper/bin/vmnet-helper --version | grep -oE 'v[0-9]+\.[0-9]+(\.[0-9]+)?')
+          VERSION_STRING=$(/opt/vmnet-helper/bin/vmnet-helper --version | yq .version)
           echo "version=$VERSION_STRING" >> $GITHUB_OUTPUT
       - name: 🏷️ Verify Matching Latest Versions
         env:
