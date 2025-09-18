@@ -19,7 +19,7 @@ jobs:
     # Use a matrix strategy to run the job on multiple OS versions
     strategy:
       matrix:
-        os: [macos-15]
+        os: [macos-13, macos-15]
         
     # Specify the runner from the matrix
     runs-on: ${{ matrix.os }}
