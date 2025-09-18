@@ -10,3 +10,8 @@ For issues/credits/requests checkout upstream source: https://github.com/nirs/vm
 curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | bash
 ```
 
+## Install in CI (non-interactive)
+```sh
+curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | sudo VMNET_INTERACTIVE=0 bash
+```
+
