@@ -55,8 +55,8 @@ jobs:
         shell: bash
         run: |
           brew install vfkit
-          curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh \
-            | bash -s -- -s
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/install.sh" \
+            | sudo VMNET_INTERACTIVE=0 bash
 
       - name: Start minikube
         id: minikube
