@@ -1,4 +1,4 @@
-name: mirror-upstream-tags
+name: Mirror upstream releases
 on:
   schedule:
     - cron: '0 10 * * *'
