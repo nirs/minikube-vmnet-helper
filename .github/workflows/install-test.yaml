@@ -15,24 +15,24 @@ jobs:
   test-installation:
     # Job name will dynamically include the OS version
     name: Test on macOS ${{ matrix.os }}
-    
+
     # Use a matrix strategy to run the job on multiple OS versions
     strategy:
       matrix:
         os: [macos-13, macos-15]
-        
+
     # Specify the runner from the matrix
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Intall yq
         run: |
-          brew update 
+          brew update
           brew install yq
       - name: 📥 Download and Install vmnet-helper
         run: |
           set -x
-          curl -fsSL https://github.com/minikube-machine/vmnet-helper/releases/latest/download/install.sh | sudo VMNET_INTERACTIVE=0 bash
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/install.sh" | sudo VMNET_INTERACTIVE=0 bash
           echo $?
       - name: ✅ Check vmnet-helper version
         id: get_version
