@@ -63,7 +63,9 @@ jobs:
         uses: medyagh/setup-minikube@HEAD
         with:
           driver: vfkit
-          start-args: --network vmnet-shared --wait-timeout=20m
+          # Starting full cluster is 2 slow and unreliable in macos-13 runner.
+          start-args: --network vmnet-shared --no-kubernetes --wait-timeout=10m
+          wait: false
 
       - name: Check Proc is up
         if: always()
